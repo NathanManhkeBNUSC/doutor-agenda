@@ -30,6 +30,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import z from "zod";
 import { medicalSpecialties } from "../_constants";
+import { useAction } from "next-safe-action/hooks";
+import { upsertDoctor } from "@/actions/upsert-doctor";
+import { toast } from "sonner";
 
 const formSchema = z
   .object({
@@ -42,8 +45,8 @@ const formSchema = z
     appointmentPrice: z.number().min(1, {
       message: "Preço da consulta é obrigatório.",
     }),
-    availableFromWeekDay: z.string(),
-    availableToWeekDay: z.string(),
+    availableFromWeekday: z.string(),
+    availableToWeekday: z.string(),
     availableFromTime: z.string().min(1, {
       message: "Hora de início é obrigátoria.",
     }),
@@ -62,7 +65,11 @@ const formSchema = z
     },
   );
 
-const UpsertDoctorForm = () => {
+interface UpsertDoctorFormProps {
+  onSucess?: () => void;
+}
+
+const UpsertDoctorForm = ({ onSucess }: UpsertDoctorFormProps) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -70,14 +77,29 @@ const UpsertDoctorForm = () => {
       specialty: "",
       appointmentPrice: 0,
       availableFromTime: "",
-      availableFromWeekDay: "1",
+      availableFromWeekday: "1",
       availableToTime: "",
-      availableToWeekDay: "5",
+      availableToWeekday: "5",
     },
   });
 
-  const onSubmit = (value: z.infer<typeof formSchema>) => {
-    console.log(value);
+  const upsertDoctorAction = useAction(upsertDoctor, {
+    onSuccess: () => {
+      toast.success("Médico adicionado com sucesso.");
+      onSucess?.();
+    },
+    onError: () => {
+      toast.error("Erro ao adicionar médico.");
+    },
+  });
+
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    upsertDoctorAction.execute({
+      ...values,
+      availableFromWeekday: parseInt(values.availableFromWeekday),
+      availableToWeekday: parseInt(values.availableToWeekday),
+      appointmentPriceInCents: values.appointmentPrice * 100,
+    });
   };
 
   return (
@@ -155,7 +177,7 @@ const UpsertDoctorForm = () => {
           />
           <FormField
             control={form.control}
-            name="availableFromWeekDay"
+            name="availableFromWeekday"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Dia inicial de disponilibilidade</FormLabel>
@@ -184,7 +206,7 @@ const UpsertDoctorForm = () => {
           />
           <FormField
             control={form.control}
-            name="availableToWeekDay"
+            name="availableToWeekday"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Dia final de disponilibilidade</FormLabel>
@@ -352,7 +374,9 @@ const UpsertDoctorForm = () => {
             )}
           />
           <DialogFooter>
-            <Button type="submit">Adicionar</Button>
+            <Button type="submit" disabled={upsertDoctorAction.isPending}>
+              {upsertDoctorAction.isPending ? "Adicionando..." : "Adicionar"}
+            </Button>
           </DialogFooter>
         </form>
       </Form>
