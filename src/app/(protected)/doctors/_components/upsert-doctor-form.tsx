@@ -35,6 +35,8 @@ import { upsertDoctor } from "@/actions/upsert-doctor";
 import { toast } from "sonner";
 import { doctorsTable } from "@/db/schema";
 
+import { deleteDoctor } from "@/actions/delete-doctor";
+
 const formSchema = z
   .object({
     name: z.string().trim().min(1, {
